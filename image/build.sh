@@ -1,16 +1,16 @@
 #!/bin/bash
 set -e
 
-CCACHE_VERSION=3.7.12
-CMAKE_VERSION=3.22.2
-CMAKE_MAJOR_VERSION=3.22
+CCACHE_VERSION=4.9
+CMAKE_VERSION=3.28.1
+CMAKE_MAJOR_VERSION=3.28
 GCC_LIBSTDCXX_VERSION=9.3.0
-ZLIB_VERSION=1.2.12
-OPENSSL_VERSION=1.1.1m
-CURL_VERSION=7.81.0
-GIT_VERSION=2.35.1
-SQLITE_VERSION=3370200
-SQLITE_YEAR=2022
+ZLIB_VERSION=1.3
+OPENSSL_VERSION=3.2.0
+CURL_VERSION=8.5.0
+GIT_VERSION=2.43.0
+SQLITE_VERSION=3450000
+SQLITE_YEAR=2024
 
 # shellcheck source=image/functions.sh
 source /hbb_build/functions.sh
@@ -33,8 +33,10 @@ SKIP_OPENSSL=${SKIP_OPENSSL:-$SKIP_LIBS}
 SKIP_CURL=${SKIP_CURL:-$SKIP_LIBS}
 SKIP_SQLITE=${SKIP_SQLITE:-$SKIP_LIBS}
 
-MAKE_CONCURRENCY=2
-VARIANTS='exe exe_gc_hardened shlib'
+MAKE_CONCURRENCY=10
+# MAKE_CONCURRENCY=$(grep "`echo -en 'processor\t'`" /proc/cpuinfo | wc -l)
+echo "Detected $MAKE_CONCURRENCY CPUs"
+VARIANTS='shlib'
 export PATH=/hbb/bin:$PATH
 
 #########################
@@ -63,37 +65,106 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 	header "Updating system, installing compiler toolchain"
 	run touch /var/lib/rpm/*
 	run yum update -y
-	run yum install -y tar curl curl-devel m4 autoconf automake libtool pkgconfig openssl-devel \
+	run yum -y groupinstall "Development Tools"
+	run yum install -y tar curl curl-devel m4 autoconf automake libtool pkgconfig \
 		file patch bzip2 zlib-devel gettext python-setuptools python-devel \
-		epel-release centos-release-scl
+		epel-release centos-release-scl perl perl-IPC-Cmd perl-Test-Simple openssl-devel
 	run yum install -y python2-pip "devtoolset-$DEVTOOLSET_VERSION"
 
 	echo "*link_gomp: %{static|static-libgcc|static-libstdc++|static-libgfortran: libgomp.a%s; : -lgomp } %{static: -ldl }" > /opt/rh/devtoolset-9/root/usr/lib/gcc/*-redhat-linux/9/libgomp.spec
 
 fi
 
+### zlib
 
-### ccache
+function install_zlib()
+{
+	local VARIANT="$1"
+	local PREFIX="/hbb_$VARIANT"
 
-if ! eval_bool "$SKIP_CCACHE"; then
-	header "Installing ccache $CCACHE_VERSION"
-	download_and_extract ccache-$CCACHE_VERSION.tar.gz \
-		ccache-$CCACHE_VERSION \
-		https://github.com/ccache/ccache/releases/download/v$CCACHE_VERSION/ccache-$CCACHE_VERSION.tar.gz
+	header "Installing zlib $ZLIB_VERSION static libraries: $VARIANT"
+	download_and_extract zlib-$ZLIB_VERSION.tar.gz \
+		zlib-$ZLIB_VERSION \
+		https://zlib.net/fossils/zlib-$ZLIB_VERSION.tar.gz
 
 	(
-		activate_holy_build_box_deps_installation_environment
-		set_default_cflags
-		run ./configure --prefix=/hbb
-		run make -j$MAKE_CONCURRENCY install
-		run strip --strip-all /hbb/bin/ccache
+		# shellcheck source=/dev/null
+		source "$PREFIX/activate"
+		# shellcheck disable=SC2030,SC2031
+		CFLAGS=$(adjust_optimization_level "$STATICLIB_CFLAGS")
+		export CFLAGS
+		run ./configure --prefix="$PREFIX" --static
+		run make -j$MAKE_CONCURRENCY
+		run make install
 	)
 	# shellcheck disable=SC2181
 	if [[ "$?" != 0 ]]; then false; fi
 
 	echo "Leaving source directory"
 	popd >/dev/null
-	run rm -rf ccache-$CCACHE_VERSION
+	run rm -rf zlib-$ZLIB_VERSION
+}
+
+if ! eval_bool "$SKIP_ZLIB"; then
+	for VARIANT in $VARIANTS; do
+		install_zlib "$VARIANT"
+	done
+fi
+
+
+### OpenSSL
+
+function install_openssl()
+{
+	local VARIANT="$1"
+	local PREFIX="/hbb_$VARIANT"
+
+	header "Installing OpenSSL $OPENSSL_VERSION static libraries: $PREFIX"
+	download_and_extract openssl-$OPENSSL_VERSION.tar.gz \
+		openssl-$OPENSSL_VERSION \
+		https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
+
+	(
+		set -o pipefail
+
+		# shellcheck source=/dev/null
+		source "$PREFIX/activate"
+
+		# shellcheck disable=SC2030,SC2001
+		CFLAGS=$(adjust_optimization_level "$STATICLIB_CFLAGS")
+		export CFLAGS
+
+		# shellcheck disable=SC2086
+		run ./config --prefix="$PREFIX" --openssldir="$PREFIX/openssl" \
+			threads zlib no-shared $CFLAGS $LDFLAGS
+		run make -j$MAKE_CONCURRENCY
+		run make install
+		run strip --strip-all "$PREFIX/bin/openssl"
+		if [[ "$VARIANT" = exe_gc_hardened ]]; then
+			run hardening-check -b "$PREFIX/bin/openssl"
+		fi
+
+		# shellcheck disable=SC2016
+		run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib/pkgconfig/libcrypto.pc
+		run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib/pkgconfig/libcrypto.pc
+	)
+	# shellcheck disable=SC2181
+	if [[ "$?" != 0 ]]; then false; fi
+
+	echo "Leaving source directory"
+	popd >/dev/null
+	run rm -rf openssl-$OPENSSL_VERSION
+}
+
+if ! eval_bool "$SKIP_OPENSSL"; then
+	for VARIANT in $VARIANTS; do
+		install_openssl "$VARIANT"
+	done
+	# run mv /hbb_exe_gc_hardened/bin/openssl /hbb/bin/
+	run mv /hbb_shlib/bin/openssl /hbb/bin/
+	for VARIANT in $VARIANTS; do
+		run rm -f "/hbb_$VARIANT/bin/openssl"
+	done
 fi
 
 
@@ -121,6 +192,28 @@ if ! eval_bool "$SKIP_CMAKE"; then
 	run rm -rf cmake-$CMAKE_VERSION
 fi
 
+### ccache
+
+if ! eval_bool "$SKIP_CCACHE"; then
+	header "Installing ccache $CCACHE_VERSION"
+	download_and_extract ccache-$CCACHE_VERSION.tar.gz \
+		ccache-$CCACHE_VERSION \
+		https://github.com/ccache/ccache/releases/download/v$CCACHE_VERSION/ccache-$CCACHE_VERSION.tar.gz
+
+	(
+		activate_holy_build_box_deps_installation_environment
+		set_default_cflags
+		run cmake -DCMAKE_INSTALL_PREFIX=/hbb
+		run make -j$MAKE_CONCURRENCY install
+		run strip --strip-all /hbb/bin/ccache
+	)
+	# shellcheck disable=SC2181
+	if [[ "$?" != 0 ]]; then false; fi
+
+	echo "Leaving source directory"
+	popd >/dev/null
+	run rm -rf ccache-$CCACHE_VERSION
+fi
 
 ### Git
 
@@ -217,98 +310,6 @@ if ! eval_bool "$SKIP_LIBSTDCXX"; then
 fi
 
 
-### zlib
-
-function install_zlib()
-{
-	local VARIANT="$1"
-	local PREFIX="/hbb_$VARIANT"
-
-	header "Installing zlib $ZLIB_VERSION static libraries: $VARIANT"
-	download_and_extract zlib-$ZLIB_VERSION.tar.gz \
-		zlib-$ZLIB_VERSION \
-		https://zlib.net/fossils/zlib-$ZLIB_VERSION.tar.gz
-
-	(
-		# shellcheck source=/dev/null
-		source "$PREFIX/activate"
-		# shellcheck disable=SC2030,SC2031
-		CFLAGS=$(adjust_optimization_level "$STATICLIB_CFLAGS")
-		export CFLAGS
-		run ./configure --prefix="$PREFIX" --static
-		run make -j$MAKE_CONCURRENCY
-		run make install
-	)
-	# shellcheck disable=SC2181
-	if [[ "$?" != 0 ]]; then false; fi
-
-	echo "Leaving source directory"
-	popd >/dev/null
-	run rm -rf zlib-$ZLIB_VERSION
-}
-
-if ! eval_bool "$SKIP_ZLIB"; then
-	for VARIANT in $VARIANTS; do
-		install_zlib "$VARIANT"
-	done
-fi
-
-
-### OpenSSL
-
-function install_openssl()
-{
-	local VARIANT="$1"
-	local PREFIX="/hbb_$VARIANT"
-
-	header "Installing OpenSSL $OPENSSL_VERSION static libraries: $PREFIX"
-	download_and_extract openssl-$OPENSSL_VERSION.tar.gz \
-		openssl-$OPENSSL_VERSION \
-		https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
-
-	(
-		set -o pipefail
-
-		# shellcheck source=/dev/null
-		source "$PREFIX/activate"
-
-		# shellcheck disable=SC2030,SC2001
-		CFLAGS=$(adjust_optimization_level "$STATICLIB_CFLAGS")
-		export CFLAGS
-
-		# shellcheck disable=SC2086
-		run ./config --prefix="$PREFIX" --openssldir="$PREFIX/openssl" \
-			threads zlib no-shared no-sse2 $CFLAGS $LDFLAGS
-		run make
-		run make install_sw
-		run strip --strip-all "$PREFIX/bin/openssl"
-		if [[ "$VARIANT" = exe_gc_hardened ]]; then
-			run hardening-check -b "$PREFIX/bin/openssl"
-		fi
-
-		# shellcheck disable=SC2016
-		run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib/pkgconfig/libcrypto.pc
-		run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib/pkgconfig/libcrypto.pc
-	)
-	# shellcheck disable=SC2181
-	if [[ "$?" != 0 ]]; then false; fi
-
-	echo "Leaving source directory"
-	popd >/dev/null
-	run rm -rf openssl-$OPENSSL_VERSION
-}
-
-if ! eval_bool "$SKIP_OPENSSL"; then
-	for VARIANT in $VARIANTS; do
-		install_openssl "$VARIANT"
-	done
-	run mv /hbb_exe_gc_hardened/bin/openssl /hbb/bin/
-	for VARIANT in $VARIANTS; do
-		run rm -f "/hbb_$VARIANT/bin/openssl"
-	done
-fi
-
-
 ### libcurl
 
 function install_curl()
@@ -398,7 +399,8 @@ if ! eval_bool "$SKIP_SQLITE"; then
 	for VARIANT in $VARIANTS; do
 		install_sqlite "$VARIANT"
 	done
-	run mv /hbb_exe_gc_hardened/bin/sqlite3 /hbb/bin/
+	# run mv /hbb_exe_gc_hardened/bin/sqlite3 /hbb/bin/
+	run mv /hbb_shlib/bin/sqlite3 /hbb/bin/
 	for VARIANT in $VARIANTS; do
 		run rm -f "/hbb_$VARIANT/bin/sqlite3"
 	done
