@@ -37,6 +37,7 @@ MAKE_CONCURRENCY=10
 # MAKE_CONCURRENCY=$(grep "`echo -en 'processor\t'`" /proc/cpuinfo | wc -l)
 echo "Detected $MAKE_CONCURRENCY CPUs"
 VARIANTS='shlib'
+# VARIANTS='gc_hardened exe shlib'
 export PATH=/hbb/bin:$PATH
 
 #########################
@@ -65,7 +66,7 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 	header "Updating system, installing compiler toolchain"
 	run touch /var/lib/rpm/*
 	run yum update -y
-	run yum -y groupinstall "Development Tools"
+	# run yum -y groupinstall "Development Tools"
 	run yum install -y tar curl curl-devel m4 autoconf automake libtool pkgconfig \
 		file patch bzip2 zlib-devel gettext python-setuptools python-devel \
 		epel-release centos-release-scl perl perl-IPC-Cmd perl-Test-Simple openssl-devel
@@ -75,97 +76,7 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 
 fi
 
-### zlib
 
-function install_zlib()
-{
-	local VARIANT="$1"
-	local PREFIX="/hbb_$VARIANT"
-
-	header "Installing zlib $ZLIB_VERSION static libraries: $VARIANT"
-	download_and_extract zlib-$ZLIB_VERSION.tar.gz \
-		zlib-$ZLIB_VERSION \
-		https://zlib.net/fossils/zlib-$ZLIB_VERSION.tar.gz
-
-	(
-		# shellcheck source=/dev/null
-		source "$PREFIX/activate"
-		# shellcheck disable=SC2030,SC2031
-		CFLAGS=$(adjust_optimization_level "$STATICLIB_CFLAGS")
-		export CFLAGS
-		run ./configure --prefix="$PREFIX" --static
-		run make -j$MAKE_CONCURRENCY
-		run make install
-	)
-	# shellcheck disable=SC2181
-	if [[ "$?" != 0 ]]; then false; fi
-
-	echo "Leaving source directory"
-	popd >/dev/null
-	run rm -rf zlib-$ZLIB_VERSION
-}
-
-if ! eval_bool "$SKIP_ZLIB"; then
-	for VARIANT in $VARIANTS; do
-		install_zlib "$VARIANT"
-	done
-fi
-
-
-### OpenSSL
-
-function install_openssl()
-{
-	local VARIANT="$1"
-	local PREFIX="/hbb_$VARIANT"
-
-	header "Installing OpenSSL $OPENSSL_VERSION static libraries: $PREFIX"
-	download_and_extract openssl-$OPENSSL_VERSION.tar.gz \
-		openssl-$OPENSSL_VERSION \
-		https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
-
-	(
-		set -o pipefail
-
-		# shellcheck source=/dev/null
-		source "$PREFIX/activate"
-
-		# shellcheck disable=SC2030,SC2001
-		CFLAGS=$(adjust_optimization_level "$STATICLIB_CFLAGS")
-		export CFLAGS
-
-		# shellcheck disable=SC2086
-		run ./config --prefix="$PREFIX" --openssldir="$PREFIX/openssl" \
-			threads zlib no-shared $CFLAGS $LDFLAGS
-		run make -j$MAKE_CONCURRENCY
-		run make install
-		run strip --strip-all "$PREFIX/bin/openssl"
-		if [[ "$VARIANT" = exe_gc_hardened ]]; then
-			run hardening-check -b "$PREFIX/bin/openssl"
-		fi
-
-		# shellcheck disable=SC2016
-		run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib/pkgconfig/libcrypto.pc
-		run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib/pkgconfig/libcrypto.pc
-	)
-	# shellcheck disable=SC2181
-	if [[ "$?" != 0 ]]; then false; fi
-
-	echo "Leaving source directory"
-	popd >/dev/null
-	run rm -rf openssl-$OPENSSL_VERSION
-}
-
-if ! eval_bool "$SKIP_OPENSSL"; then
-	for VARIANT in $VARIANTS; do
-		install_openssl "$VARIANT"
-	done
-	# run mv /hbb_exe_gc_hardened/bin/openssl /hbb/bin/
-	run mv /hbb_shlib/bin/openssl /hbb/bin/
-	for VARIANT in $VARIANTS; do
-		run rm -f "/hbb_$VARIANT/bin/openssl"
-	done
-fi
 
 
 ### CMake
@@ -306,6 +217,98 @@ function install_libstdcxx()
 if ! eval_bool "$SKIP_LIBSTDCXX"; then
 	for VARIANT in $VARIANTS; do
 		install_libstdcxx "$VARIANT"
+	done
+fi
+
+### zlib
+
+function install_zlib()
+{
+	local VARIANT="$1"
+	local PREFIX="/hbb_$VARIANT"
+
+	header "Installing zlib $ZLIB_VERSION static libraries: $VARIANT"
+	download_and_extract zlib-$ZLIB_VERSION.tar.gz \
+		zlib-$ZLIB_VERSION \
+		https://zlib.net/fossils/zlib-$ZLIB_VERSION.tar.gz
+
+	(
+		# shellcheck source=/dev/null
+		source "$PREFIX/activate"
+		# shellcheck disable=SC2030,SC2031
+		CFLAGS=$(adjust_optimization_level "$STATICLIB_CFLAGS")
+		export CFLAGS
+		run ./configure --prefix="$PREFIX" --static
+		run make -j$MAKE_CONCURRENCY
+		run make install
+	)
+	# shellcheck disable=SC2181
+	if [[ "$?" != 0 ]]; then false; fi
+
+	echo "Leaving source directory"
+	popd >/dev/null
+	run rm -rf zlib-$ZLIB_VERSION
+}
+
+if ! eval_bool "$SKIP_ZLIB"; then
+	for VARIANT in $VARIANTS; do
+		install_zlib "$VARIANT"
+	done
+fi
+
+
+### OpenSSL
+
+function install_openssl()
+{
+	local VARIANT="$1"
+	local PREFIX="/hbb_$VARIANT"
+
+	header "Installing OpenSSL $OPENSSL_VERSION static libraries: $PREFIX"
+	download_and_extract openssl-$OPENSSL_VERSION.tar.gz \
+		openssl-$OPENSSL_VERSION \
+		https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
+
+	(
+		set -o pipefail
+
+		# shellcheck source=/dev/null
+		source "$PREFIX/activate"
+
+		# shellcheck disable=SC2030,SC2001
+		CFLAGS=$(adjust_optimization_level "$STATICLIB_CFLAGS")
+		export CFLAGS
+
+		# shellcheck disable=SC2086
+		run ./config --prefix="$PREFIX" --openssldir="$PREFIX/openssl" \
+			threads zlib no-shared no-sse2 $CFLAGS $LDFLAGS
+		run make -j$MAKE_CONCURRENCY
+		run make install_sw
+		run strip --strip-all "$PREFIX/bin/openssl"
+		if [[ "$VARIANT" = exe_gc_hardened ]]; then
+			run hardening-check -b "$PREFIX/bin/openssl"
+		fi
+
+		# shellcheck disable=SC2016
+		run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib/pkgconfig/libcrypto.pc || true
+		run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib/pkgconfig/libcrypto.pc || true
+	)
+	# shellcheck disable=SC2181
+	if [[ "$?" != 0 ]]; then false; fi
+
+	echo "Leaving source directory"
+	popd >/dev/null
+	run rm -rf openssl-$OPENSSL_VERSION
+}
+
+if ! eval_bool "$SKIP_OPENSSL"; then
+	for VARIANT in $VARIANTS; do
+		install_openssl "$VARIANT"
+	done
+	# run mv /hbb_exe_gc_hardened/bin/openssl /hbb/bin/
+	run mv /hbb_shlib/bin/openssl /hbb/bin/
+	for VARIANT in $VARIANTS; do
+		run rm -f "/hbb_$VARIANT/bin/openssl"
 	done
 fi
 

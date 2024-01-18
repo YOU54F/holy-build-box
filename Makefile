@@ -1,8 +1,8 @@
-VERSION = 3.0.6
+VERSION = 3.1.0
 ifneq ($VERSION, edge)
 MAJOR_VERSION := $(shell awk -v OFS=. -F. '{print $$1,$$2}' <<< $(VERSION))
 endif
-OWNER = phusion
+OWNER = you54f
 DISABLE_OPTIMIZATIONS = 0
 IMAGE = $(OWNER)/holy-build-box
 
@@ -10,6 +10,7 @@ IMAGE = $(OWNER)/holy-build-box
 
 build:
 	docker buildx build --progress=plain --platform "linux/arm64" --rm -t $(IMAGE)-arm64:$(VERSION) -f Dockerfile-arm64 --pull --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .
+	docker buildx build --progress=plain --platform "linux/amd64" --rm -t $(IMAGE)-amd64:$(VERSION) -f Dockerfile-amd64 --pull --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .
 
 test:
 	docker run -it --platform "linux/amd64" --rm -e SKIP_FINALIZE=1 -e DISABLE_OPTIMIZATIONS=1 -v $$(pwd)/image:/hbb_build:ro centos:7 bash /hbb_build/build.sh
