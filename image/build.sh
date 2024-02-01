@@ -33,8 +33,7 @@ SKIP_OPENSSL=${SKIP_OPENSSL:-$SKIP_LIBS}
 SKIP_CURL=${SKIP_CURL:-$SKIP_LIBS}
 SKIP_SQLITE=${SKIP_SQLITE:-$SKIP_LIBS}
 
-MAKE_CONCURRENCY=10
-# MAKE_CONCURRENCY=$(grep "`echo -en 'processor\t'`" /proc/cpuinfo | wc -l)
+MAKE_CONCURRENCY=$(grep "`echo -en 'processor\t'`" /proc/cpuinfo | wc -l)
 echo "Detected $MAKE_CONCURRENCY CPUs"
 VARIANTS='shlib'
 # VARIANTS='gc_hardened exe shlib'
@@ -66,17 +65,28 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 	header "Updating system, installing compiler toolchain"
 	run touch /var/lib/rpm/*
 	run yum update -y
-	# run yum -y groupinstall "Development Tools"
 	run yum install -y tar curl curl-devel m4 autoconf automake libtool pkgconfig \
 		file patch bzip2 zlib-devel gettext python-setuptools python-devel \
-		epel-release centos-release-scl perl perl-IPC-Cmd perl-Test-Simple openssl-devel
+		epel-release centos-release-scl perl perl-IPC-Cmd perl-Test-Simple
 	run yum install -y python2-pip "devtoolset-$DEVTOOLSET_VERSION"
 
 	echo "*link_gomp: %{static|static-libgcc|static-libstdc++|static-libgfortran: libgomp.a%s; : -lgomp } %{static: -ldl }" > /opt/rh/devtoolset-9/root/usr/lib/gcc/*-redhat-linux/9/libgomp.spec
 
 fi
 
+### openssl system wide
 
+cd /usr/src
+curl -O https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
+tar -zxf openssl-$OPENSSL_VERSION.tar.gz
+rm openssl-$OPENSSL_VERSION.tar.gz
+cd /usr/src/openssl-$OPENSSL_VERSION
+./config
+make -j$MAKE_CONCURRENCY
+make test
+make install
+ln -s /usr/local/lib64/libssl.so.3 /usr/lib64/libssl.so.3
+ln -s /usr/local/lib64/libcrypto.so.3 /usr/lib64/libcrypto.so.3
 
 
 ### CMake
@@ -290,8 +300,8 @@ function install_openssl()
 		fi
 
 		# shellcheck disable=SC2016
-		run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib/pkgconfig/libcrypto.pc || true
-		run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib/pkgconfig/libcrypto.pc || true
+		run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
+		run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
 	)
 	# shellcheck disable=SC2181
 	if [[ "$?" != 0 ]]; then false; fi
