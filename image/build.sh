@@ -81,7 +81,11 @@ curl -O https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
 tar -zxf openssl-$OPENSSL_VERSION.tar.gz
 rm openssl-$OPENSSL_VERSION.tar.gz
 cd /usr/src/openssl-$OPENSSL_VERSION
-./config
+if [ "$(uname -m)" = "aarch64" ]; then
+	./Configure no-afalgeng
+else
+	./config
+fi
 make -j$MAKE_CONCURRENCY
 make test
 make install
@@ -300,8 +304,13 @@ function install_openssl()
 		fi
 
 		# shellcheck disable=SC2016
-		run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
-		run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
+		if [ "$(uname -m)" = "aarch64" ]; then
+			run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib/pkgconfig/libcrypto.pc
+			run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib/pkgconfig/libcrypto.pc
+		else
+			run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
+			run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
+		fi
 	)
 	# shellcheck disable=SC2181
 	if [[ "$?" != 0 ]]; then false; fi
