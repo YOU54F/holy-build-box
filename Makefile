@@ -4,23 +4,21 @@ MAJOR_VERSION := $(shell awk -v OFS=. -F. '{print $$1,$$2}' <<< $(VERSION))
 endif
 OWNER = you54f
 DISABLE_OPTIMIZATIONS = 0
+OPENSSL_1_1_LEGACY ?= false
 IMAGE = $(OWNER)/holy-build-box
 
 .PHONY: build test tags push release
 
 build:
-	docker buildx build --progress=plain --platform "linux/arm64" --rm -t $(IMAGE):$(VERSION)-arm64 -f Dockerfile-arm64 --pull --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .
-	docker buildx build --progress=plain --platform "linux/amd64" --rm -t $(IMAGE):$(VERSION)-amd64 -f Dockerfile-amd64 --pull --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .
+	docker buildx build --progress=plain --platform "linux/arm64" --rm -t $(IMAGE):$(VERSION)-arm64 -f Dockerfile-arm64 --pull --build-arg OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .
+	docker buildx build --progress=plain --platform "linux/amd64" --rm -t $(IMAGE):$(VERSION)-amd64 -f Dockerfile-amd64 --pull --build-arg OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .
 
 test:
-	docker run -it --platform "linux/amd64" --rm -e SKIP_FINALIZE=1 -e DISABLE_OPTIMIZATIONS=1 -v $$(pwd)/image:/hbb_build:ro centos:7 bash /hbb_build/build.sh
-	docker run -it --platform "linux/arm64" --rm -e SKIP_FINALIZE=1 -e DISABLE_OPTIMIZATIONS=1 -v $$(pwd)/image:/hbb_build:ro centos:7 bash /hbb_build/build.sh
+	docker run -it --platform "linux/arm64" --rm -e OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) -e SKIP_FINALIZE=1 -e DISABLE_OPTIMIZATIONS=1 -v $$(pwd)/image:/hbb_build:ro centos:7 bash /hbb_build/build.sh
+	docker run -it --platform "linux/amd64" --rm -e OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) -e SKIP_FINALIZE=1 -e DISABLE_OPTIMIZATIONS=1 -v $$(pwd)/image:/hbb_build:ro centos:7 bash /hbb_build/build.sh
 
 tags:
 ifdef MAJOR_VERSION
-	docker tag $(IMAGE):$(VERSION)-arm64 $(IMAGE):$(MAJOR_VERSION)-arm64
-	docker tag $(IMAGE):$(VERSION)-amd64 $(IMAGE):$(MAJOR_VERSION)-amd64
-	docker tag $(IMAGE):$(VERSION)-arm64 $(IMAGE):latest-arm64
 	docker tag $(IMAGE):$(VERSION)-amd64 $(IMAGE):latest-amd64
 endif
 

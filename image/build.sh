@@ -6,7 +6,11 @@ CMAKE_VERSION=3.28.1
 CMAKE_MAJOR_VERSION=3.28
 GCC_LIBSTDCXX_VERSION=9.3.0
 ZLIB_VERSION=1.3
-OPENSSL_VERSION=3.2.0
+if [[ "$OPENSSL_1_1_LEGACY" = true ]]; then
+	OPENSSL_VERSION=1.1.1w
+else
+	OPENSSL_VERSION=3.2.0
+fi
 CURL_VERSION=8.5.0
 GIT_VERSION=2.43.0
 SQLITE_VERSION=3450000
@@ -65,33 +69,39 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 	header "Updating system, installing compiler toolchain"
 	run touch /var/lib/rpm/*
 	run yum update -y
-	run yum install -y tar curl curl-devel m4 autoconf automake libtool pkgconfig \
-		file patch bzip2 zlib-devel gettext python-setuptools python-devel \
-		epel-release centos-release-scl perl perl-IPC-Cmd perl-Test-Simple
+	if [[ "$OPENSSL_1_1_LEGACY" = true ]]; then
+		run yum install -y tar curl curl-devel m4 autoconf automake libtool pkgconfig \
+			file patch bzip2 zlib-devel gettext python-setuptools python-devel openssl-devel \
+			epel-release centos-release-scl
+	else
+		run yum install -y tar curl curl-devel m4 autoconf automake libtool pkgconfig \
+			file patch bzip2 zlib-devel gettext python-setuptools python-devel \
+			epel-release centos-release-scl perl perl-IPC-Cmd perl-Test-Simple
+	fi
 	run yum install -y python2-pip "devtoolset-$DEVTOOLSET_VERSION"
 
 	echo "*link_gomp: %{static|static-libgcc|static-libstdc++|static-libgfortran: libgomp.a%s; : -lgomp } %{static: -ldl }" > /opt/rh/devtoolset-9/root/usr/lib/gcc/*-redhat-linux/9/libgomp.spec
 
 fi
 
-### openssl system wide
 
-cd /usr/src
-curl -O https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
-tar -zxf openssl-$OPENSSL_VERSION.tar.gz
-rm openssl-$OPENSSL_VERSION.tar.gz
-cd /usr/src/openssl-$OPENSSL_VERSION
-if [ "$(uname -m)" = "aarch64" ]; then
-	./Configure no-afalgeng
-else
-	./config
+if [[ "$OPENSSL_1_1_LEGACY" != true ]]; then
+	cd /usr/src
+	curl -O https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
+	tar -zxf openssl-$OPENSSL_VERSION.tar.gz
+	rm openssl-$OPENSSL_VERSION.tar.gz
+	cd /usr/src/openssl-$OPENSSL_VERSION
+	if [ "$(uname -m)" = "aarch64" ]; then
+		./Configure no-afalgeng
+	else
+		./config
+	fi
+	make -j$MAKE_CONCURRENCY
+	make test
+	make install
+	ln -s /usr/local/lib64/libssl.so.3 /usr/lib64/libssl.so.3
+	ln -s /usr/local/lib64/libcrypto.so.3 /usr/lib64/libcrypto.so.3
 fi
-make -j$MAKE_CONCURRENCY
-make test
-make install
-ln -s /usr/local/lib64/libssl.so.3 /usr/lib64/libssl.so.3
-ln -s /usr/local/lib64/libcrypto.so.3 /usr/lib64/libcrypto.so.3
-
 
 ### CMake
 
