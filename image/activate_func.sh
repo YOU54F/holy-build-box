@@ -9,9 +9,9 @@ function activate_holy_build_box_deps_installation_environment() {
 	export C_INCLUDE_PATH=/hbb/include
 	export CPLUS_INCLUDE_PATH=/hbb/include
 	export LIBRARY_PATH=/hbb/lib
-	export PKG_CONFIG_PATH=/hbb/lib/pkgconfig:/usr/lib/pkgconfig
+	export PKG_CONFIG_PATH=/hbb/lib/pkgconfig:/hbb/lib64/pkgconfig:/usr/lib/pkgconfig:/usr/lib64/pkgconfig
 	export CPPFLAGS=-I/hbb/include
-	export LDPATHFLAGS="-L/hbb/lib -Wl,-rpath,/hbb/lib"
+	export LDPATHFLAGS="-L/hbb/lib -Wl,-rpath,/hbb/lib -L/hbb/lib64 -Wl,-rpath,/hbb/lib64"
 	export LDFLAGS="$LDPATHFLAGS"
 	export LD_LIBRARY_PATH=/hbb/lib
 
@@ -33,11 +33,11 @@ function activate_holy_build_box() {
 	export C_INCLUDE_PATH=$PREFIX/include
 	export CPLUS_INCLUDE_PATH=$PREFIX/include
 	export LIBRARY_PATH=$PREFIX/lib
-	export PKG_CONFIG_PATH=$PREFIX/lib/pkgconfig:/usr/lib/pkgconfig
-	export LD_LIBRARY_PATH=/hbb/lib:$PREFIX/lib
+	export PKG_CONFIG_PATH=$PREFIX/lib64/pkgconfig:$PREFIX/lib/pkgconfig:/usr/lib/pkgconfig
+	export LD_LIBRARY_PATH=/hbb/lib64:/hbb/lib:$PREFIX/lib
 
 	export CPPFLAGS="-I$PREFIX/include"
-	export LDPATHFLAGS="-L$PREFIX/lib"
+	export LDPATHFLAGS="-L$PREFIX/lib64 -L$PREFIX/lib"
 	local MINIMAL_CFLAGS="-g -O2 -fvisibility=hidden $CPPFLAGS"
 
 	export CFLAGS="$MINIMAL_CFLAGS $EXTRA_CFLAGS"

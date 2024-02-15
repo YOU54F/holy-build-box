@@ -105,7 +105,7 @@ fi
 # 	ln -s /usr/local/lib64/libcrypto.so.3 /usr/lib64/libcrypto.so.3
 # fi
 
-### CMake
+## CMake
 
 if ! eval_bool "$SKIP_CMAKE"; then
 	header "Installing CMake $CMAKE_VERSION"
@@ -364,10 +364,10 @@ function install_curl()
 		export CFLAGS
 		./configure --prefix="$PREFIX" --disable-shared --disable-debug --enable-optimize --disable-werror \
 			--disable-curldebug --enable-symbol-hiding --disable-ares --disable-manual --disable-ldap --disable-ldaps \
-			--disable-rtsp --disable-dict --disable-ftp --disable-ftps --disable-gopher --disable-imap \
-			--disable-imaps --disable-pop3 --disable-pop3s --without-librtmp --disable-smtp --disable-smtps \
+			--disable-rtsp --disable-dict --disable-ftp --disable-gopher --disable-imap \
+			--disable-pop3 --without-librtmp --disable-smtp --disable-smtps \
 			--disable-telnet --disable-tftp --disable-smb --disable-versioned-symbols \
-			--without-libidn --without-libssh2 --without-nghttp2 \
+			--without-libidn2 --without-libssh2 --without-nghttp2 \
 			--with-ssl
 		run make -j$MAKE_CONCURRENCY
 		run make install
