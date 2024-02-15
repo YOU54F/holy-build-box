@@ -56,8 +56,8 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 	run cp /hbb_build/activate-exec /hbb/activate-exec
 
 	if ! eval_bool "$SKIP_USERS_GROUPS"; then
-		run groupadd -g 9327 builder
-		run adduser --uid 9327 --gid 9327 builder
+		run addgroup -g 9327 builder
+		run adduser -D -u 9327 -G builder builder
 	fi
 
 	for VARIANT in $VARIANTS; do
@@ -67,41 +67,43 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 	done
 
 	header "Updating system, installing compiler toolchain"
-	run touch /var/lib/rpm/*
-	run yum update -y
+	run touch /var/lib/apk/*
+	run apk update
 	if [[ "$OPENSSL_1_1_LEGACY" = true ]]; then
-		run yum install -y tar curl curl-devel m4 autoconf automake libtool pkgconfig \
-			file patch bzip2 zlib-devel gettext python-setuptools python-devel openssl-devel \
-			epel-release centos-release-scl
+		run apk add --no-cache tar curl curl-dev m4 autoconf automake libtool pkgconfig \
+			file patch bzip2 zlib-dev gettext python2 py-setuptools python2-dev openssl-dev \
+			epel centos-scl
 	else
-		run yum install -y tar curl curl-devel m4 autoconf automake libtool pkgconfig \
-			file patch bzip2 zlib-devel gettext python-setuptools python-devel \
-			epel-release centos-release-scl perl perl-IPC-Cmd perl-Test-Simple
+		run apk add --no-cache tar curl curl-dev m4 autoconf automake libtool pkgconfig \
+			file patch bzip2 zlib-dev gettext python3 python3-dev py-setuptools \
+			perl build-base linux-headers openssl-dev openssl mpc1-dev xz python2
 	fi
-	run yum install -y python2-pip "devtoolset-$DEVTOOLSET_VERSION"
+	# run apk add --no-cache "gcc"
 
-	echo "*link_gomp: %{static|static-libgcc|static-libstdc++|static-libgfortran: libgomp.a%s; : -lgomp } %{static: -ldl }" > /opt/rh/devtoolset-9/root/usr/lib/gcc/*-redhat-linux/9/libgomp.spec
+	# echo "*link_gomp: %{static|static-libgcc|static-libstdc++|static-libgfortran: libgomp.a%s; : -lgomp } %{static: -ldl }" > /opt/rh/devtoolset-9/root/usr/lib/gcc/*-redhat-linux/9/libgomp.spec
 
 fi
 
-
-if [[ "$OPENSSL_1_1_LEGACY" != true ]]; then
-	cd /usr/src
-	curl -O https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
-	tar -zxf openssl-$OPENSSL_VERSION.tar.gz
-	rm openssl-$OPENSSL_VERSION.tar.gz
-	cd /usr/src/openssl-$OPENSSL_VERSION
-	if [ "$(uname -m)" = "aarch64" ]; then
-		./Configure no-afalgeng
-	else
-		./config
-	fi
-	make -j$MAKE_CONCURRENCY
-	make test
-	make install
-	ln -s /usr/local/lib64/libssl.so.3 /usr/lib64/libssl.so.3
-	ln -s /usr/local/lib64/libcrypto.so.3 /usr/lib64/libcrypto.so.3
-fi
+# if [[ "$OPENSSL_1_1_LEGACY" != true ]]; then
+# 	mkdir -p /tmp/openssl
+# 	cd /tmp/openssl
+# 	curl -O https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
+# 	tar -zxf openssl-$OPENSSL_VERSION.tar.gz
+# 	rm openssl-$OPENSSL_VERSION.tar.gz
+# 	cd /tmp/openssl/openssl-$OPENSSL_VERSION
+# 	if [ "$(uname -m)" = "aarch64" ]; then
+# 		./Configure no-afalgeng
+# 	else
+# 		./config
+# 	fi
+# 	make -j$MAKE_CONCURRENCY
+# 	make test
+# 	make install
+# 	cd /
+# 	rm -rf /tmp/openssl
+# 	ln -s /usr/local/lib64/libssl.so.3 /usr/lib64/libssl.so.3
+# 	ln -s /usr/local/lib64/libcrypto.so.3 /usr/lib64/libcrypto.so.3
+# fi
 
 ### CMake
 
@@ -443,7 +445,6 @@ fi
 
 if ! eval_bool "$SKIP_FINALIZE"; then
 	header "Finalizing"
-	run yum clean -y all
 	run rm -rf /hbb/share/doc /hbb/share/man
 	run rm -rf /hbb_build /tmp/*
 	for VARIANT in $VARIANTS; do
