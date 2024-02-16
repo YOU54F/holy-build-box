@@ -12,7 +12,7 @@ IMAGE = $(OWNER)/holy-build-box
 build:
 	docker buildx build --progress=plain --platform "linux/amd64" --rm -t $(IMAGE):$(VERSION)-amd64-alpine -f Dockerfile-amd64 --pull --build-arg OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .
 	docker buildx build --progress=plain --platform "linux/arm64" --rm -t $(IMAGE):$(VERSION)-arm64-alpine -f Dockerfile-arm64 --pull --build-arg OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .
-build_amd:
+build_amd64:
 	docker buildx build --progress=plain --platform "linux/amd64" --rm -t $(IMAGE):$(VERSION)-amd64-alpine -f Dockerfile-amd64 --pull --build-arg OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .
 build_arm64:
 	docker buildx build --progress=plain --platform "linux/arm64" --rm -t $(IMAGE):$(VERSION)-arm64-alpine -f Dockerfile-arm64 --pull --build-arg OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .
@@ -24,7 +24,7 @@ build_i386:
 test:
 	docker run -it --platform "linux/arm64" --rm -e OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) -e SKIP_FINALIZE=1 -e DISABLE_OPTIMIZATIONS=1 -v $$(pwd)/image:/hbb_build:ro alpine:3.15 bash /hbb_build/build.sh
 	docker run -it --platform "linux/amd64" --rm -e OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) -e SKIP_FINALIZE=1 -e DISABLE_OPTIMIZATIONS=1 -v $$(pwd)/image:/hbb_build:ro alpine:3.15 bash /hbb_build/build.sh
-test_amd:
+test_amd64:
 	docker run -it --platform "linux/amd64" --rm -e OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) -e SKIP_FINALIZE=1 -e DISABLE_OPTIMIZATIONS=1 -v $$(pwd)/image:/hbb_build:ro alpine:3.15 bash /hbb_build/build.sh
 test_arm64:
 	docker run -it --platform "linux/arm64" --rm -e OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) -e SKIP_FINALIZE=1 -e DISABLE_OPTIMIZATIONS=1 -v $$(pwd)/image:/hbb_build:ro alpine:3.15 bash /hbb_build/build.sh
@@ -43,7 +43,7 @@ ifdef MAJOR_VERSION
 	docker tag $(IMAGE):$(VERSION)-arm-alpine $(IMAGE):latest-arm-alpine
 	docker tag $(IMAGE):$(VERSION)-i386-alpine $(IMAGE):latest-i386-alpine
 endif
-tags_amd:
+tags_amd64:
 ifdef MAJOR_VERSION
 	docker tag $(IMAGE):$(VERSION)-amd64-alpine $(IMAGE):$(MAJOR_VERSION)-amd64-alpine
 	docker tag $(IMAGE):$(VERSION)-amd64-alpine $(IMAGE):latest-amd64-alpine
@@ -79,7 +79,7 @@ ifdef MAJOR_VERSION
 	docker push $(IMAGE):latest-arm-alpine
 	docker push $(IMAGE):latest-arm-alpine
 endif
-push_amd: tags_amd
+push_amd64: tags_amd64
 	docker push $(IMAGE):$(VERSION)-amd64-alpine
 ifdef MAJOR_VERSION
 	docker push $(IMAGE):$(MAJOR_VERSION)-amd64-alpine
