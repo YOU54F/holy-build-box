@@ -1,0 +1,6 @@
+FROM alpine:3.15
+RUN apk add --no-cache bash
+ADD image /hbb_build
+ARG DISABLE_OPTIMIZATIONS=0
+ARG OPENSSL_1_1_LEGACY=false
+RUN bash /hbb_build/build.sh
