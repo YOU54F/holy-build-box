@@ -1,5 +1,5 @@
-VERSION = 3.1.0
-ifneq ($VERSION, edge)
+VERSION = 4.0.0
+ifneq ($(VERSION), edge)
 MAJOR_VERSION := $(shell awk -v OFS=. -F. '{print $$1,$$2}' <<< $(VERSION))
 endif
 OWNER = you54f
@@ -7,7 +7,62 @@ DISABLE_OPTIMIZATIONS = 0
 OPENSSL_1_1_LEGACY ?= false
 IMAGE = $(OWNER)/holy-build-box
 
+ARCHS:=amd64 arm/v6 arm/v7 arm64 i386 ppc64le s390x
+
 .PHONY: build test tags push release
+
+build_all_images:
+	@$(foreach var,$(ARCHS),make build_image ARCH=$(var) VARIANT=alpine;)
+
+manifest_create:
+	docker tag you54f/holy-build-box:3.1.0-i386-alpine you54f/holy-build-box:alpine
+	docker push you54f/holy-build-box:alpine
+	docker tag you54f/holy-build-box:3.1.0-i386-alpine you54f/holy-build-box:next-i386-alpine
+	docker tag you54f/holy-build-box:3.1.0-s390x-alpine you54f/holy-build-box:next-s390x-alpine
+	docker tag you54f/holy-build-box:3.1.0-arm-v6-alpine you54f/holy-build-box:next-arm-v6-alpine
+	docker tag you54f/holy-build-box:3.1.0-arm-v7-alpine you54f/holy-build-box:next-arm-v7-alpine
+	docker tag you54f/holy-build-box:3.1.0-ppc64le-alpine you54f/holy-build-box:next-ppc64le-alpine
+	docker tag you54f/holy-build-box:3.1.0-amd64-alpine you54f/holy-build-box:next-amd64-alpine
+	docker push you54f/holy-build-box:next-i386-alpine
+	docker push you54f/holy-build-box:next-s390x-alpine
+	docker push you54f/holy-build-box:next-arm-v6-alpine
+	docker push you54f/holy-build-box:next-arm-v7-alpine
+	docker push you54f/holy-build-box:next-ppc64le-alpine
+	docker push you54f/holy-build-box:next-amd64-alpine
+	docker buildx imagetools create --tag you54f/holy-build-box:alpine --append you54f/holy-build-box:next-i386-alpine
+	docker buildx imagetools create --tag you54f/holy-build-box:alpine --append you54f/holy-build-box:next-s390x-alpine
+	docker buildx imagetools create --tag you54f/holy-build-box:alpine --append you54f/holy-build-box:next-arm-v6-alpine
+	docker buildx imagetools create --tag you54f/holy-build-box:alpine --append you54f/holy-build-box:next-arm-v7-alpine
+	docker buildx imagetools create --tag you54f/holy-build-box:alpine --append you54f/holy-build-box:next-ppc64le-alpine
+	docker buildx imagetools create --tag you54f/holy-build-box:alpine --append you54f/holy-build-box:next-amd64-alpine
+
+manifest_create_truby:
+	docker tag you54f/traveling-ruby-builder-i386:next-alpine you54f/traveling-ruby-builder:next-i386-alpine
+	docker tag you54f/traveling-ruby-builder-s390x:next-alpine you54f/traveling-ruby-builder:next-s390x-alpine
+	docker tag you54f/traveling-ruby-builder-arm-v6:next-alpine you54f/traveling-ruby-builder:next-arm-v6-alpine
+	docker tag you54f/traveling-ruby-builder-amd64:next-alpine you54f/traveling-ruby-builder:next-amd64-alpine
+	docker tag you54f/traveling-ruby-builder-ppc64le:next-alpine you54f/traveling-ruby-builder:next-ppc64le-alpine
+	docker tag you54f/traveling-ruby-builder:next-i386-alpine you54f/traveling-ruby-builder:alpine
+	docker push you54f/traveling-ruby-builder:next-i386-alpine
+	docker push you54f/traveling-ruby-builder:next-s390x-alpine
+	docker push you54f/traveling-ruby-builder:next-arm-v6-alpine
+	docker push you54f/traveling-ruby-builder:next-amd64-alpine
+	docker push you54f/traveling-ruby-builder:next-ppc64le-alpine
+	docker push you54f/traveling-ruby-builder:alpine
+	docker buildx imagetools create --tag you54f/traveling-ruby-builder:alpine --append you54f/traveling-ruby-builder:next-i386-alpine
+	docker buildx imagetools create --tag you54f/traveling-ruby-builder:alpine --append you54f/traveling-ruby-builder:next-s390x-alpine
+	docker buildx imagetools create --tag you54f/traveling-ruby-builder:alpine --append you54f/traveling-ruby-builder:next-arm-v6-alpine
+	docker buildx imagetools create --tag you54f/traveling-ruby-builder:alpine --append you54f/traveling-ruby-builder:next-ppc64le-alpine
+	docker buildx imagetools create --tag you54f/traveling-ruby-builder:alpine --append you54f/traveling-ruby-builder:next-amd64-alpine
+
+build_image:
+	docker buildx build --progress=plain --platform linux/$(ARCH) --rm -t $(IMAGE):$(VERSION)-$(subst /,-,$(ARCH))-$(VARIANT) -f Dockerfile-$(VARIANT) --pull --build-arg OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .
+
+build_image_risc_alpine:
+	ARCH=riscv64 VARIANT=alpine make build_image_riscv64
+
+build_image_riscv64:
+	docker buildx build --progress=plain --platform linux/$(ARCH) --rm -t $(IMAGE):$(VERSION)-$(subst /,-,$(ARCH))-$(VARIANT) -f Dockerfile-$(VARIANT) --pull --build-arg BASE_IMAGE=alpine:edge --build-arg OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .
 
 build:
 	docker buildx build --progress=plain --platform "linux/amd64" --rm -t $(IMAGE):$(VERSION)-amd64-alpine -f Dockerfile-amd64 --pull --build-arg OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .

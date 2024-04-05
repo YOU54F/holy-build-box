@@ -21,11 +21,11 @@ source /hbb_build/functions.sh
 # shellcheck source=image/activate_func.sh
 source /hbb_build/activate_func.sh
 
-SKIP_INITIALIZE=${SKIP_INITIALIZE:-false}
-SKIP_USERS_GROUPS=${SKIP_USERS_GROUPS:-false}
-SKIP_TOOLS=${SKIP_TOOLS:-false}
-SKIP_LIBS=${SKIP_LIBS:-false}
-SKIP_FINALIZE=${SKIP_FINALIZE:-false}
+SKIP_INITIALIZE=${SKIP_INITIALIZE:-true}
+SKIP_USERS_GROUPS=${SKIP_USERS_GROUPS:-true}
+SKIP_TOOLS=${SKIP_TOOLS:-true}
+SKIP_LIBS=${SKIP_LIBS:-true}
+SKIP_FINALIZE=${SKIP_FINALIZE:-true}
 
 SKIP_CCACHE=${SKIP_CCACHE:-$SKIP_TOOLS}
 SKIP_CMAKE=${SKIP_CMAKE:-$SKIP_TOOLS}
@@ -38,6 +38,9 @@ SKIP_CURL=${SKIP_CURL:-$SKIP_LIBS}
 SKIP_SQLITE=${SKIP_SQLITE:-$SKIP_LIBS}
 
 MAKE_CONCURRENCY=$(grep "`echo -en 'processor\t'`" /proc/cpuinfo | wc -l)
+echo "Detected $MAKE_CONCURRENCY CPUs"
+MAKE_CONCURRENCY=12
+
 echo "Detected $MAKE_CONCURRENCY CPUs"
 VARIANTS='shlib'
 # VARIANTS='gc_hardened exe shlib'
@@ -72,11 +75,11 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 	if [[ "$OPENSSL_1_1_LEGACY" = true ]]; then
 		run apk add --no-cache tar curl curl-dev m4 autoconf automake libtool pkgconfig \
 			file patch bzip2 zlib-dev gettext python2 py-setuptools python2-dev openssl-dev \
-			epel centos-scl
+			epel centos-scl file
 	else
 		run apk add --no-cache tar curl curl-dev m4 autoconf automake libtool pkgconfig \
 			file patch bzip2 zlib-dev gettext python3 python3-dev py-setuptools \
-			perl build-base linux-headers openssl-dev openssl mpc1-dev xz python2
+			perl build-base linux-headers openssl-dev openssl mpc1-dev xz python2 file
 	fi
 	# run apk add --no-cache "gcc"
 
@@ -306,7 +309,17 @@ function install_openssl()
 		export CFLAGS
 
 		# shellcheck disable=SC2086
-		run ./config --prefix="$PREFIX" --openssldir="$PREFIX/openssl" \
+		if [ "$(uname -m)" = "x86_64" ]; then
+			echo "detected processor"
+			if grep -q "alpine" /etc/os-release; then
+				echo "detected alpine"
+				if file /bin/busybox | grep 32 >/dev/null; then
+				echo "32 bit target"
+				CONFIGURE_TARGET="linux-generic32 -m32 "
+				fi
+			fi
+		fi
+		run ./Configure $CONFIGURE_TARGET--prefix="$PREFIX" --openssldir="$PREFIX/openssl" \
 			threads zlib no-shared no-sse2 $CFLAGS $LDFLAGS
 		run make -j$MAKE_CONCURRENCY
 		run make install_sw
@@ -316,9 +329,19 @@ function install_openssl()
 		fi
 
 		# shellcheck disable=SC2016
-		if [ "$(uname -m)" = "x86_64" ]; then
-			run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
-			run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
+		if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "s390x" ]; then
+			if grep -q "alpine" /etc/os-release; then
+				if file /bin/busybox | grep 32 >/dev/null; then
+					run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib/pkgconfig/libcrypto.pc
+					run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib/pkgconfig/libcrypto.pc
+				else
+					run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
+					run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
+				fi
+			else
+				run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
+				run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
+			fi
 		else
 			run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib/pkgconfig/libcrypto.pc
 			run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib/pkgconfig/libcrypto.pc

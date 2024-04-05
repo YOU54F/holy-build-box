@@ -1,0 +1,17 @@
+ARG BASE_IMAGE=alpine:3.15
+FROM ${BASE_IMAGE}
+RUN apk add --no-cache bash
+ADD image /hbb_build
+ARG DISABLE_OPTIMIZATIONS=0
+ARG OPENSSL_1_1_LEGACY=false
+RUN bash -c 'SKIP_INITIALIZE=false SKIP_USERS_GROUPS=false /hbb_build/build.sh'
+RUN bash -c 'SKIP_CMAKE=false /hbb_build/build.sh'
+RUN bash -c 'SKIP_CCACHE=false /hbb_build/build.sh'
+RUN bash -c 'SKIP_GIT=false /hbb_build/build.sh'
+RUN bash -c 'SKIP_LIBSTDCXX=false /hbb_build/build.sh'
+RUN bash -c 'SKIP_ZLIB=false /hbb_build/build.sh'
+RUN bash -c 'SKIP_OPENSSL=false /hbb_build/build.sh'
+RUN bash -c 'SKIP_CURL=false /hbb_build/build.sh'
+RUN bash -c 'SKIP_GIT=false /hbb_build/build.sh'
+RUN bash -c 'SKIP_SQLITE=false /hbb_build/build.sh'
+RUN bash -c 'SKIP_FINALIZE=false /hbb_build/build.sh'
