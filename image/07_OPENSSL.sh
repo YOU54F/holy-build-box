@@ -47,7 +47,17 @@ function install_openssl()
 		export CFLAGS
 
 		# shellcheck disable=SC2086
-		run ./config --prefix="$PREFIX" --openssldir="$PREFIX/openssl" \
+		if [ "$(uname -m)" = "x86_64" ]; then
+			echo "detected processor"
+			if grep -q "alpine" /etc/os-release; then
+				echo "detected alpine"
+				if file /bin/busybox | grep 32 >/dev/null; then
+				echo "32 bit target"
+				CONFIGURE_TARGET="linux-generic32 -m32 "
+				fi
+			fi
+		fi
+		run ./Configure $CONFIGURE_TARGET--prefix="$PREFIX" --openssldir="$PREFIX/openssl" \
 			threads zlib no-shared no-sse2 $CFLAGS $LDFLAGS
 		run make -j$MAKE_CONCURRENCY
 		run make install_sw
@@ -58,8 +68,18 @@ function install_openssl()
 
 		# shellcheck disable=SC2016
 		if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "s390x" ]; then
-			run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
-			run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
+			if grep -q "alpine" /etc/os-release; then
+				if file /bin/busybox | grep 32 >/dev/null; then
+					run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib/pkgconfig/libcrypto.pc
+					run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib/pkgconfig/libcrypto.pc
+				else
+					run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
+					run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
+				fi
+			else
+				run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
+				run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
+			fi
 		else
 			run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib/pkgconfig/libcrypto.pc
 			run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib/pkgconfig/libcrypto.pc

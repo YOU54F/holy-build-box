@@ -5,18 +5,18 @@ CMAKE_VERSION=3.28.1
 CMAKE_MAJOR_VERSION=3.28
 
 
-# shellcheck source=image/functions.sh
+# # shellcheck source=image/functions.sh
 source /hbb_build/functions.sh
-# shellcheck source=image/activate_func.sh
+# # shellcheck source=image/activate_func.sh
 source /hbb_build/activate_func.sh
 
 SKIP_CMAKE=${SKIP_CMAKE:-true}
 
 MAKE_CONCURRENCY=12
 
-echo "Detected $MAKE_CONCURRENCY CPUs"
+# echo "Detected $MAKE_CONCURRENCY CPUs"
 VARIANTS='shlib'
-# VARIANTS='gc_hardened exe shlib'
+# # VARIANTS='gc_hardened exe shlib'
 export PATH=/hbb/bin:$PATH
 
 ## CMake
