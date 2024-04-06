@@ -1,17 +1,50 @@
 ARG BASE_IMAGE=alpine:3.15
 FROM ${BASE_IMAGE}
 RUN apk add --no-cache bash
-ADD image /hbb_build
+ADD image/variants /hbb_build/variants
+ADD image/activate_func.sh /hbb_build/activate_func.sh
+ADD image/activate-exec /hbb_build/activate-exec
+ADD image/functions.sh /hbb_build/functions.sh
+ADD image/hardening-check /hbb_build/hardening-check
+ADD image/hbb-activate /hbb_build/hbb-activate 
+ADD image/libcheck /hbb_build/libcheck
+ADD image/setuser /hbb_build/setuser
 ARG DISABLE_OPTIMIZATIONS=0
 ARG OPENSSL_1_1_LEGACY=false
-RUN bash -c 'SKIP_INITIALIZE=false SKIP_USERS_GROUPS=false /hbb_build/build.sh'
-RUN bash -c 'SKIP_CMAKE=false /hbb_build/build.sh'
-RUN bash -c 'SKIP_CCACHE=false /hbb_build/build.sh'
-RUN bash -c 'SKIP_GIT=false /hbb_build/build.sh'
-RUN bash -c 'SKIP_LIBSTDCXX=false /hbb_build/build.sh'
-RUN bash -c 'SKIP_ZLIB=false /hbb_build/build.sh'
-RUN bash -c 'SKIP_OPENSSL=false /hbb_build/build.sh'
-RUN bash -c 'SKIP_CURL=false /hbb_build/build.sh'
-RUN bash -c 'SKIP_GIT=false /hbb_build/build.sh'
-RUN bash -c 'SKIP_SQLITE=false /hbb_build/build.sh'
-RUN bash -c 'SKIP_FINALIZE=false /hbb_build/build.sh'
+ADD image/01_INITIALIZE.sh /hbb_build/01_INITIALIZE.sh
+RUN bash -c 'SKIP_INITIALIZE=false SKIP_USERS_GROUPS=false /hbb_build/01_INITIALIZE.sh'
+ADD image/SETUP_OPENSSL_3_2.sh /hbb_build/SETUP_OPENSSL_3_2.sh
+RUN bash -c 'SKIP_OPENSSL=false /hbb_build/SETUP_OPENSSL_3_2.sh'
+ADD image/02_CMAKE.sh /hbb_build/02_CMAKE.sh
+RUN bash -c 'SKIP_CMAKE=false /hbb_build/02_CMAKE.sh'
+ADD image/03_CCACHE.sh /hbb_build/03_CCACHE.sh
+RUN bash -c 'SKIP_CCACHE=false /hbb_build/03_CCACHE.sh'
+ADD image/04_GIT.sh /hbb_build/04_GIT.sh
+RUN bash -c 'SKIP_GIT=false /hbb_build/04_GIT.sh'
+ADD image/05_LIBSTDCXX.sh /hbb_build/05_LIBSTDCXX.sh
+RUN bash -c 'SKIP_LIBSTDCXX=false /hbb_build/05_LIBSTDCXX.sh'
+ADD image/06_ZLIB.sh /hbb_build/06_ZLIB.sh
+RUN bash -c 'SKIP_ZLIB=false /hbb_build/06_ZLIB.sh'
+ADD image/07_OPENSSL.sh /hbb_build/07_OPENSSL.sh
+RUN bash -c 'SKIP_OPENSSL=false /hbb_build/07_OPENSSL.sh'
+ADD image/08_CURL.sh /hbb_build/08_CURL.sh
+RUN bash -c 'SKIP_CURL=false /hbb_build/08_CURL.sh'
+ADD image/09_SQLITE.sh /hbb_build/09_SQLITE.sh
+RUN bash -c 'SKIP_SQLITE=false /hbb_build/09_SQLITE.sh'
+ADD image/10_FINALIZE.sh /hbb_build/10_FINALIZE.sh
+RUN bash -c 'SKIP_FINALIZE=false /hbb_build/10_FINALIZE.sh'
+
+# ADD image /hbb_build
+# ARG DISABLE_OPTIMIZATIONS=0
+# ARG OPENSSL_1_1_LEGACY=false
+# RUN bash -c 'SKIP_INITIALIZE=false SKIP_USERS_GROUPS=false /hbb_build/build.sh'
+# RUN bash -c 'SKIP_CMAKE=false /hbb_build/build.sh'
+# RUN bash -c 'SKIP_CCACHE=false /hbb_build/build.sh'
+# RUN bash -c 'SKIP_GIT=false /hbb_build/build.sh'
+# RUN bash -c 'SKIP_LIBSTDCXX=false /hbb_build/build.sh'
+# RUN bash -c 'SKIP_ZLIB=false /hbb_build/build.sh'
+# RUN bash -c 'SKIP_OPENSSL=false /hbb_build/build.sh'
+# RUN bash -c 'SKIP_CURL=false /hbb_build/build.sh'
+# RUN bash -c 'SKIP_GIT=false /hbb_build/build.sh'
+# RUN bash -c 'SKIP_SQLITE=false /hbb_build/build.sh'
+# RUN bash -c 'SKIP_FINALIZE=false /hbb_build/build.sh'

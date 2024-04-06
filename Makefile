@@ -56,7 +56,7 @@ manifest_create_truby:
 	docker buildx imagetools create --tag you54f/traveling-ruby-builder:alpine --append you54f/traveling-ruby-builder:next-amd64-alpine
 
 build_image:
-	docker buildx build --progress=plain --platform linux/$(ARCH) --rm -t $(IMAGE):$(VERSION)-$(subst /,-,$(ARCH))-$(VARIANT) -f Dockerfile-$(VARIANT) --pull --build-arg OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .
+	docker buildx build --progress=plain --platform linux/$(ARCH) --rm -t $(IMAGE):$(VERSION)-$(subst /,-,$(ARCH))-$(VARIANT) -f Dockerfile-$(VARIANT) --pull --build-arg OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) . --load
 
 build_image_risc_alpine:
 	ARCH=riscv64 VARIANT=alpine make build_image_riscv64

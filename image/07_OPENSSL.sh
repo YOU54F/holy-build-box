@@ -32,9 +32,17 @@ function install_openssl()
 	local PREFIX="/hbb_$VARIANT"
 
 	header "Installing OpenSSL $OPENSSL_VERSION static libraries: $PREFIX"
-	download_and_extract openssl-$OPENSSL_VERSION.tar.gz \
+
+	if [ "$(uname -m)" = "ppc64le" ]; then
+		download_and_extract openssl-3.2.zip openssl-$OPENSSL_VERSION https://github.com/openssl/openssl/archive/refs/heads/openssl-3.2.zip
+		cd /openssl-$OPENSSL_VERSION/openssl-openssl-3.2
+	else
+		download_and_extract openssl-$OPENSSL_VERSION.tar.gz \
 		openssl-$OPENSSL_VERSION \
 		https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
+	fi
+
+
 
 	(
 		set -o pipefail
@@ -91,6 +99,7 @@ function install_openssl()
 	echo "Leaving source directory"
 	popd >/dev/null
 	run rm -rf openssl-$OPENSSL_VERSION
+	run ls /
 }
 
 if ! eval_bool "$SKIP_OPENSSL"; then

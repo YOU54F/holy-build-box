@@ -85,11 +85,11 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 					perl build-base linux-headers openssl-dev openssl mpc1-dev xz python2 file
 			fi
 		elif [[ -f "/etc/debian_version" ]]; then
-			run rm /etc/apt/sources.list
-			echo "deb [trusted=yes] http://archive.debian.org/debian stretch main non-free contrib" > /etc/apt/sources.list
-			echo 'deb-src [trusted=yes] http://archive.debian.org/debian/ stretch main non-free contrib'  >> /etc/apt/sources.list
-			echo 'deb [trusted=yes] http://archive.debian.org/debian-security/ stretch/updates main non-free contrib'  >> /etc/apt/sources.list
-			run cat /etc/apt/sources.list
+			# run rm /etc/apt/sources.list
+			# echo "deb [trusted=yes] http://archive.debian.org/debian stretch main non-free contrib" > /etc/apt/sources.list
+			# echo 'deb-src [trusted=yes] http://archive.debian.org/debian/ stretch main non-free contrib'  >> /etc/apt/sources.list
+			# echo 'deb [trusted=yes] http://archive.debian.org/debian-security/ stretch/updates main non-free contrib'  >> /etc/apt/sources.list
+			# run cat /etc/apt/sources.list
 			# run touch /var/lib/dpkg/*
 			run apt-get update
 			if [[ "$OPENSSL_1_1_LEGACY" = true ]]; then
