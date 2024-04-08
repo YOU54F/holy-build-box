@@ -44,14 +44,25 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 
 			run touch /var/lib/apk/*
 			run apk update
+
+			ALPINE_VERSION=$(cat /etc/alpine-release)
+			if echo "$ALPINE_VERSION" | grep -q "alpha"; then
+				ALPINE_PACKAGE_LIST="tar curl curl-dev m4 autoconf automake libtool pkgconfig \
+					file patch bzip2 zlib-dev gettext python3 python3-dev py-setuptools \
+					perl build-base linux-headers openssl-dev openssl mpc1-dev xz file"
+			else
+				ALPINE_PACKAGE_LIST="tar curl curl-dev m4 autoconf automake libtool pkgconfig \
+					file patch bzip2 zlib-dev gettext python3 python3-dev py-setuptools \
+					perl build-base linux-headers openssl-dev openssl mpc1-dev xz python2 file"
+			fi
+		
+
 			if [[ "$OPENSSL_1_1_LEGACY" = true ]]; then
 				run apk add --no-cache tar curl curl-dev m4 autoconf automake libtool pkgconfig \
 					file patch bzip2 zlib-dev gettext python2 py-setuptools python2-dev openssl-dev \
 					epel centos-scl file
 			else
-				run apk add --no-cache tar curl curl-dev m4 autoconf automake libtool pkgconfig \
-					file patch bzip2 zlib-dev gettext python3 python3-dev py-setuptools \
-					perl build-base linux-headers openssl-dev openssl mpc1-dev xz python2 file
+				run apk add --no-cache $ALPINE_PACKAGE_LIST
 			fi
 		elif [[ -f "/etc/debian_version" ]]; then
 			# run rm /etc/apt/sources.list
@@ -68,7 +79,7 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 			else
 				run apt-get install -y tar curl libcurl4-openssl-dev m4 autoconf automake libtool pkg-config \
 					patch bzip2 zlib1g-dev gettext python3 python3-dev python-setuptools \
-					perl build-essential libssl-dev libmpc-dev xz-utils python2.7 wget gcc-9
+					perl build-essential libssl-dev libmpc-dev xz-utils python2.7 wget file unzip
 			fi
 			# pushd /opt
 			# 	wget http://ftp.mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-9.3.0/gcc-9.3.0.tar.gz

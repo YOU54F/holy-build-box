@@ -14,9 +14,12 @@
 | RISC-V 64-bit (`riscv64`) | RISC-V       | [riscv64](https://hub.docker.com/u/riscv64/) | ❌ | ❌ |❌|
 | Windows x86-64 (`windows-amd64`) | x86-64 | [winamd64](https://hub.docker.com/u/winamd64/) | ❌   |❌ |❌|
 
-- Alpine images built against 3.15
-- Ubuntu images built against 14.04 (glibc 2.19)
-- Centos images built against 7 (glibc 2.17)
+- Alpine images built against [3.15](https://hub.docker.com/layers/library/alpine/3.15/images/sha256-26284c09912acfc5497b462c5da8a2cd14e01b4f3ffa876596f5289dd8eab7f2)
+  - [riscv64](https://hub.docker.com/layers/riscv64/alpine/20210804/images/sha256-2387fa34569bac5a2745bbe536105834be0c5a72be9d0fa1c793403672c220a2?context=explore) built against 3.15 alpha 
+- Ubuntu images built against [14.04](https://hub.docker.com/layers/library/ubuntu/14.04/images/sha256-534255069ef3adf1c7a555fd9f614845ab66c61ef9846e438d86e12ae8c89b88) (glibc 2.19)
+  - ppc64le / s390x built against [16.04](https://hub.docker.com/layers/library/ubuntu/16.04/images/sha256-a3785f78ab8547ae2710c89e627783cfa7ee7824d3468cae6835c9f4eae23ff7)
+  - riscv64 built against [20.04](https://hub.docker.com/layers/riscv64/ubuntu/20.04/images/sha256-c0e96f609e5f128bdb6d24d21d3bf0a9af6f17234976fa574dad7146a0f97fb2?context=explore)
+- Centos images built against [7](https://hub.docker.com/layers/library/centos/7/images/sha256-dead07b4d8ed7e29e98de0f4504d87e8880d4347859d839686a31da35a3b532f?context=explore) (glibc 2.17)
 
 Centos RHEL based alternatives
 
@@ -63,10 +66,11 @@ Images are pushed to the docker hub, and combined locally into a single image
 | Platform                 | Architecture  | Musl | Glibc
 |--------------------------|---------------|------|-------
 | ARMv8 64-bit (`arm64v8`) | ARMv8         |  ✅  | ✅
-| Linux x86-64 (`amd64`)   | x86-64        |  ✅  | 🚧
-| x86/i686 (`i386`)        | x86/i686      |  ✅  | 🚧
-| IBM z Systems (`s390x`)  | z Systems     |  ✅  | 🚧
-| IBM POWER8 (`ppc64le`)   | POWER8        |  ✅  | 🚧
+| Linux x86-64 (`amd64`)   | x86-64        |  ✅  | ✅
+| x86/i686 (`i386`)        | x86/i686      |  ✅  | ✅
+| IBM z Systems (`s390x`)  | z Systems     |  ✅  | ✅
+| IBM POWER8 (`ppc64le`)   | POWER8        |  ✅  | ✅
+| RISC-V 64-bit (`riscv64`)| RISC-V        |  🚧  | ✅ 
 
 - Alpine images built against 3.15
 - Ubuntu images built against 14.04 (glibc 2.19)

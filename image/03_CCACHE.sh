@@ -1,8 +1,12 @@
 #!/bin/bash
 set -e
 
-CCACHE_VERSION=4.9
 
+if grep -q "ubuntu" /etc/os-release; then
+	CCACHE_VERSION=3.7.12
+else
+	CCACHE_VERSION=4.9
+fi
 # shellcheck source=image/functions.sh
 source /hbb_build/functions.sh
 # shellcheck source=image/activate_func.sh
@@ -30,7 +34,11 @@ if ! eval_bool "$SKIP_CCACHE"; then
 	(
 		activate_holy_build_box_deps_installation_environment
 		set_default_cflags
-		run cmake -DCMAKE_INSTALL_PREFIX=/hbb
+		if grep -q "ubuntu" /etc/os-release; then
+			run ./configure --prefix=/hbb
+		else
+			run cmake -DCMAKE_INSTALL_PREFIX=/hbb
+		fi
 		run make -j$MAKE_CONCURRENCY install
 		run strip --strip-all /hbb/bin/ccache
 	)

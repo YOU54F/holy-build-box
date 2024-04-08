@@ -33,17 +33,33 @@ if [[ "$OPENSSL_1_1_LEGACY" != true ]]; then
 	tar -zxf openssl-$OPENSSL_VERSION.tar.gz
 	rm openssl-$OPENSSL_VERSION.tar.gz
 	cd /tmp/openssl/openssl-$OPENSSL_VERSION
+	if [ "$(uname -m)" = "x86_64" ]; then
+		echo "detected processor"
+		if grep -q "alpine" /etc/os-release; then
+			echo "detected alpine"
+			if file /bin/busybox | grep 32 >/dev/null; then
+			echo "32 bit target"
+			CONFIGURE_TARGET="linux-generic32 -m32 "
+			fi
+		fi
+		elif grep -q "ubuntu" /etc/os-release; then
+			echo "detected ubuntu"
+			if file /bin/dash | grep 32 >/dev/null; then
+			echo "32 bit target"
+			CONFIGURE_TARGET="linux-generic32 -m32 "
+		fi
+	fi
 	if [ "$(uname -m)" = "aarch64" ]; then
-		./Configure no-afalgeng
+		./Configure no-afalgeng $CONFIGURE_TARGET--prefix=/usr/local/ssl --openssldir=/usr/local/ssl
 	else
-		./config
+		./config $CONFIGURE_TARGET--prefix=/usr/local/ssl --openssldir=/usr/local/ssl
 	fi
 	make -j$MAKE_CONCURRENCY
 	# make test
 	make install_sw
 	cd /
 	rm -rf /tmp/openssl
-	ln -s /usr/local/lib64/libssl.so.3 /usr/lib64/libssl.so.3
-	ln -s /usr/local/lib64/libcrypto.so.3 /usr/lib64/libcrypto.so.3
+	ln -s /usr/local/lib64/libssl.so.3 /usr/lib64/libssl.so.3 || echo true
+	ln -s /usr/local/lib64/libcrypto.so.3 /usr/lib64/libcrypto.so.3 || echo true
 	popd
 fi

@@ -33,7 +33,7 @@ function install_openssl()
 
 	header "Installing OpenSSL $OPENSSL_VERSION static libraries: $PREFIX"
 
-	if [ "$(uname -m)" = "ppc64le" ]; then
+	if [ "$(uname -m)" = "ppc64le" ] || [ "$(uname -m)" = "riscv64" ]; then
 		download_and_extract openssl-3.2.zip openssl-$OPENSSL_VERSION https://github.com/openssl/openssl/archive/refs/heads/openssl-3.2.zip
 		cd /openssl-$OPENSSL_VERSION/openssl-openssl-3.2
 	else
@@ -63,7 +63,15 @@ function install_openssl()
 				echo "32 bit target"
 				CONFIGURE_TARGET="linux-generic32 -m32 "
 				fi
+			elif grep -q "ubuntu" /etc/os-release; then
+				echo "detected ubuntu"
+				if file /bin/dash | grep 32 >/dev/null; then
+				echo "32 bit target"
+				CONFIGURE_TARGET="linux-generic32 -m32 "
+				fi
 			fi
+		elif [ "$(uname -m)" = "riscv64" ]; then
+			CONFIGURE_TARGET="linux-generic64 "
 		fi
 		run ./Configure $CONFIGURE_TARGET--prefix="$PREFIX" --openssldir="$PREFIX/openssl" \
 			threads zlib no-shared no-sse2 $CFLAGS $LDFLAGS
@@ -83,7 +91,13 @@ function install_openssl()
 				else
 					run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
 					run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
-				fi
+				fi			
+			elif grep -q "ubuntu" /etc/os-release; then
+				echo "detected ubuntu"
+				if file /bin/dash | grep 32 >/dev/null; then
+				echo "32 bit target"
+				CONFIGURE_TARGET="linux-generic32 -m32 "
+			    fi	
 			else
 				run sed -i 's/^Libs:.*/Libs: -L${libdir} -lcrypto -lz -ldl -lpthread/' "$PREFIX"/lib64/pkgconfig/libcrypto.pc
 				run sed -i '/^Libs.private:.*/d' "$PREFIX"/lib64/pkgconfig/libcrypto.pc

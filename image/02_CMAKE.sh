@@ -1,9 +1,13 @@
 #!/bin/bash
 set -e
 
-CMAKE_VERSION=3.28.1
-CMAKE_MAJOR_VERSION=3.28
-
+if grep -q "ubuntu" /etc/os-release; then
+	CMAKE_VERSION=3.22.2
+	CMAKE_MAJOR_VERSION=3.22
+else
+	CMAKE_VERSION=3.28.1
+	CMAKE_MAJOR_VERSION=3.28
+fi
 
 # # shellcheck source=image/functions.sh
 source /hbb_build/functions.sh

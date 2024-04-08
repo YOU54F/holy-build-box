@@ -55,7 +55,7 @@ function install_curl()
 			--disable-pop3 --without-librtmp --disable-smtp --disable-smtps \
 			--disable-telnet --disable-tftp --disable-smb --disable-versioned-symbols \
 			--without-libidn2 --without-libssh2 --without-nghttp2 \
-			--with-ssl
+			--with-ssl --without-zstd
 		run make -j$MAKE_CONCURRENCY
 		run make install
 		if [[ "$VARIANT" = exe_gc_hardened ]]; then
