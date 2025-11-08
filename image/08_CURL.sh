@@ -1,20 +1,7 @@
 #!/bin/bash
 set -e
 
-CCACHE_VERSION=4.9
-CMAKE_VERSION=3.28.1
-CMAKE_MAJOR_VERSION=3.28
-GCC_LIBSTDCXX_VERSION=9.3.0
-ZLIB_VERSION=1.3
-if [[ "$OPENSSL_1_1_LEGACY" = true ]]; then
-	OPENSSL_VERSION=1.1.1w
-else
-	OPENSSL_VERSION=3.2.0
-fi
-CURL_VERSION=8.5.0
-GIT_VERSION=2.43.0
-SQLITE_VERSION=3450000
-SQLITE_YEAR=2024
+CURL_VERSION=8.17.0
 
 # shellcheck source=image/functions.sh
 source /hbb_build/functions.sh
@@ -55,7 +42,7 @@ function install_curl()
 			--disable-pop3 --without-librtmp --disable-smtp --disable-smtps \
 			--disable-telnet --disable-tftp --disable-smb --disable-versioned-symbols \
 			--without-libidn2 --without-libssh2 --without-nghttp2 \
-			--with-ssl
+			--with-ssl --without-libpsl
 		run make -j$MAKE_CONCURRENCY
 		run make install
 		if [[ "$VARIANT" = exe_gc_hardened ]]; then

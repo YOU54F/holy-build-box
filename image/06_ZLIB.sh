@@ -2,7 +2,7 @@
 set -e
 
 
-ZLIB_VERSION=1.3
+ZLIB_VERSION=1.3.1
 
 
 # shellcheck source=image/functions.sh

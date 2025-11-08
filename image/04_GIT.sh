@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-GIT_VERSION=2.43.0
+GIT_VERSION=2.51.2
 
 # shellcheck source=image/functions.sh
 source /hbb_build/functions.sh

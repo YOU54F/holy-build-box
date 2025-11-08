@@ -1,8 +1,8 @@
 #!/bin/bash
 set -e
 
-SQLITE_VERSION=3450000
-SQLITE_YEAR=2024
+SQLITE_VERSION=3510000
+SQLITE_YEAR=2025
 
 # shellcheck source=image/functions.sh
 source /hbb_build/functions.sh
@@ -41,7 +41,7 @@ function install_sqlite()
 		export CFLAGS
 		export CXXFLAGS
 		run ./configure --prefix="$PREFIX" --enable-static \
-			--disable-shared --disable-dynamic-extensions
+			--disable-shared --disable-load-extension
 		run make -j$MAKE_CONCURRENCY
 		run make install
 		if [[ "$VARIANT" = exe_gc_hardened ]]; then

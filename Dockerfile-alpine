@@ -13,8 +13,12 @@ ARG DISABLE_OPTIMIZATIONS=0
 ARG OPENSSL_1_1_LEGACY=false
 ADD image/01_INITIALIZE.sh /hbb_build/01_INITIALIZE.sh
 RUN bash -c 'SKIP_INITIALIZE=false SKIP_USERS_GROUPS=false /hbb_build/01_INITIALIZE.sh'
-ADD image/SETUP_OPENSSL_3_2.sh /hbb_build/SETUP_OPENSSL_3_2.sh
-RUN bash -c 'SKIP_OPENSSL=false /hbb_build/SETUP_OPENSSL_3_2.sh'
+# ADD image/SETUP_OPENSSL_3_2.sh /hbb_build/SETUP_OPENSSL_3_2.sh
+# RUN bash -c 'SKIP_OPENSSL=false /hbb_build/SETUP_OPENSSL_3_2.sh'
+# ADD image/07_OPENSSL.sh /hbb_build/07_OPENSSL.sh
+# RUN bash -c 'SKIP_OPENSSL=false /hbb_build/07_OPENSSL.sh'
+# ADD image/08_CURL.sh /hbb_build/08_CURL.sh
+# RUN bash -c 'SKIP_CURL=false /hbb_build/08_CURL.sh'
 ADD image/02_CMAKE.sh /hbb_build/02_CMAKE.sh
 RUN bash -c 'SKIP_CMAKE=false /hbb_build/02_CMAKE.sh'
 ADD image/03_CCACHE.sh /hbb_build/03_CCACHE.sh

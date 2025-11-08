@@ -2,4 +2,4 @@ FROM centos:7
 ADD image /hbb_build
 ARG DISABLE_OPTIMIZATIONS=0
 ARG OPENSSL_1_1_LEGACY=false
-RUN bash /hbb_build/build.sh
+RUN env ARCHITECTURE=arm64 /hbb_build/build.sh

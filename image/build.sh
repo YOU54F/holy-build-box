@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-CCACHE_VERSION=4.9
+CCACHE_VERSION=4.12.1
 CMAKE_VERSION=3.28.1
 CMAKE_MAJOR_VERSION=3.28
 GCC_LIBSTDCXX_VERSION=9.3.0
@@ -9,23 +9,29 @@ ZLIB_VERSION=1.3
 if [[ "$OPENSSL_1_1_LEGACY" = true ]]; then
 	OPENSSL_VERSION=1.1.1w
 else
-	OPENSSL_VERSION=3.2.0
+	OPENSSL_VERSION=3.6.0
 fi
-CURL_VERSION=8.5.0
-GIT_VERSION=2.43.0
-SQLITE_VERSION=3450000
-SQLITE_YEAR=2024
+CURL_VERSION=8.17.0
+# GIT_VERSION=2.51.2 # latest
+# compat/posix.h:159:10: fatal error: sys/random.h: No such file or directory
+# https://github.com/git/git/commit/75a044f748f2c37a2a08854acd49ed1fbdb86bb1
+# https://github.com/search?q=repo%3Agit%2Fgit%20HAVE_GETRANDOM&type=code
+# https://github.com/git/git/commit/cdda67de0316ec29dfc1e290bb7f2154b7b95ee8
+# GIT_VERSION=2.46.0 # fails
+GIT_VERSION=2.45.4 # works
+SQLITE_VERSION=3510000
+SQLITE_YEAR=2025
 
 # shellcheck source=image/functions.sh
 source /hbb_build/functions.sh
 # shellcheck source=image/activate_func.sh
 source /hbb_build/activate_func.sh
 
-SKIP_INITIALIZE=${SKIP_INITIALIZE:-true}
-SKIP_USERS_GROUPS=${SKIP_USERS_GROUPS:-true}
-SKIP_TOOLS=${SKIP_TOOLS:-true}
-SKIP_LIBS=${SKIP_LIBS:-true}
-SKIP_FINALIZE=${SKIP_FINALIZE:-true}
+SKIP_INITIALIZE=${SKIP_INITIALIZE:-false}
+SKIP_USERS_GROUPS=${SKIP_USERS_GROUPS:-false}
+SKIP_TOOLS=${SKIP_TOOLS:-false}
+SKIP_LIBS=${SKIP_LIBS:-false}
+SKIP_FINALIZE=${SKIP_FINALIZE:-false}
 
 SKIP_CCACHE=${SKIP_CCACHE:-$SKIP_TOOLS}
 SKIP_CMAKE=${SKIP_CMAKE:-$SKIP_TOOLS}
@@ -85,12 +91,6 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 					perl build-base linux-headers openssl-dev openssl mpc1-dev xz python2 file
 			fi
 		elif [[ -f "/etc/debian_version" ]]; then
-			# run rm /etc/apt/sources.list
-			# echo "deb [trusted=yes] http://archive.debian.org/debian stretch main non-free contrib" > /etc/apt/sources.list
-			# echo 'deb-src [trusted=yes] http://archive.debian.org/debian/ stretch main non-free contrib'  >> /etc/apt/sources.list
-			# echo 'deb [trusted=yes] http://archive.debian.org/debian-security/ stretch/updates main non-free contrib'  >> /etc/apt/sources.list
-			# run cat /etc/apt/sources.list
-			# run touch /var/lib/dpkg/*
 			run apt-get update
 			if [[ "$OPENSSL_1_1_LEGACY" = true ]]; then
 				run apt-get install -y tar curl libcurl4-openssl-dev m4 autoconf automake libtool pkg-config \
@@ -101,16 +101,6 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 					patch bzip2 zlib1g-dev gettext python3 python3-dev python-setuptools \
 					perl build-essential libssl-dev libmpc-dev xz-utils python2.7 wget gcc-9
 			fi
-			# pushd /opt
-			# 	wget http://ftp.mirrorservice.org/sites/sourceware.org/pub/gcc/releases/gcc-9.3.0/gcc-9.3.0.tar.gz
-			# 	tar zxf gcc-9.3.0.tar.gz
-			# 	rm gcc-9.3.0.tar.gz
-			# 	cd gcc-9.3.0
-			# 	./contrib/download_prerequisites
-			# 	./configure --disable-multilib
-			# 	make -j $MAKE_CONCURRENCY
-			# 	make install
-			# popd
 		elif [[ -f "/etc/centos-release" ]]; then
 			if ! eval_bool "$SKIP_USERS_GROUPS"; then
 				run groupadd -g 9327 builder
@@ -118,52 +108,75 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 			fi
 			header "Updating system, installing compiler toolchain"
 			run touch /var/lib/rpm/*
+			# Update CentOS 7 repos to use vault.centos.org
+			# as mirror.centos.org no longer hosts CentOS 7 packages
+			sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo
+			sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo
+			sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
+
+			if [[ $ARCHITECTURE == "arm64" ]]; then
+				sed -i 's|baseurl=http://vault.centos.org/centos/7/os/$basearch/|baseurl=https://vault.centos.org/altarch/7/sclo/aarch64/|g' /etc/yum.repos.d/*.repo
+				find /etc/yum.repos.d/ -type f -exec sed -i 's|centos/7|altarch/7|g' {} +
+			fi
+
 			run yum update -y
 			if [[ "$OPENSSL_1_1_LEGACY" = true ]]; then
-				run yum install -y tar curl curl-devel m4 autoconf automake libtool pkgconfig \
-					file patch bzip2 zlib-devel gettext python-setuptools python-devel openssl-devel \
-					epel-release centos-release-scl
+				run yum install -y epel-release centos-release-scl \
+						tar curl curl-devel m4 autoconf automake libtool pkgconfig \
+						file patch bzip2 zlib-devel gettext python-setuptools python-devel \
+						openssl-devel
 			else
-				run yum install -y tar curl curl-devel m4 autoconf automake libtool pkgconfig \
-					file patch bzip2 zlib-devel gettext python-setuptools python-devel \
-					epel-release centos-release-scl perl perl-IPC-Cmd perl-Test-Simple
+				run yum install -y epel-release centos-release-scl \
+						tar curl curl-devel m4 autoconf automake libtool pkgconfig \
+						file patch bzip2 zlib-devel gettext python-setuptools python-devel \
+						perl perl-IPC-Cmd perl-Test-Simple perl-core
 			fi
-			run yum install -y python2-pip "devtoolset-$DEVTOOLSET_VERSION"
 
+			# we need to update mirrors again after installing centos-release-scl
+			# in order to install devtoolset from vault.centos.org
+			sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo
+			sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo
+			sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
+
+			if [[ $ARCHITECTURE == "arm64" ]]; then
+				sed -i 's|baseurl=http://vault.centos.org/centos/7/os/$basearch/|baseurl=https://vault.centos.org/altarch/7/sclo/aarch64/|g' /etc/yum.repos.d/*.repo
+				find /etc/yum.repos.d/ -type f -exec sed -i 's|centos/7|altarch/7|g' {} +
+			fi
+			yum install -y python2-pip "devtoolset-$DEVTOOLSET_VERSION"
 			echo "*link_gomp: %{static|static-libgcc|static-libstdc++|static-libgfortran: libgomp.a%s; : -lgomp } %{static: -ldl }" > /opt/rh/devtoolset-9/root/usr/lib/gcc/*-redhat-linux/9/libgomp.spec
-			
 		else
 			echo "Unsupported Linux distribution"
 		fi
 	else
 		echo "This script is intended to run on Linux"
 	fi
-	# run apk add --no-cache "gcc"
-
-	# echo "*link_gomp: %{static|static-libgcc|static-libstdc++|static-libgfortran: libgomp.a%s; : -lgomp } %{static: -ldl }" > /opt/rh/devtoolset-9/root/usr/lib/gcc/*-redhat-linux/9/libgomp.spec
-
 fi
 
-# if [[ "$OPENSSL_1_1_LEGACY" != true ]]; then
-# 	mkdir -p /tmp/openssl
-# 	cd /tmp/openssl
-# 	curl -O https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
-# 	tar -zxf openssl-$OPENSSL_VERSION.tar.gz
-# 	rm openssl-$OPENSSL_VERSION.tar.gz
-# 	cd /tmp/openssl/openssl-$OPENSSL_VERSION
-# 	if [ "$(uname -m)" = "aarch64" ]; then
-# 		./Configure no-afalgeng
-# 	else
-# 		./config
-# 	fi
-# 	make -j$MAKE_CONCURRENCY
-# 	make test
-# 	make install
-# 	cd /
-# 	rm -rf /tmp/openssl
-# 	ln -s /usr/local/lib64/libssl.so.3 /usr/lib64/libssl.so.3
-# 	ln -s /usr/local/lib64/libcrypto.so.3 /usr/lib64/libcrypto.so.3
-# fi
+# build openssl from source for cmake
+if [[ "$OPENSSL_1_1_LEGACY" != true ]]; then
+	header "Building OpenSSL $OPENSSL_VERSION from source for CMake"
+	activate_holy_build_box_deps_installation_environment
+	set_default_cflags
+	mkdir -p /tmp/openssl
+	pushd /tmp/openssl
+	curl -LO https://www.openssl.org/source/openssl-$OPENSSL_VERSION.tar.gz
+	tar -zxf openssl-$OPENSSL_VERSION.tar.gz
+	rm openssl-$OPENSSL_VERSION.tar.gz
+	cd /tmp/openssl/openssl-$OPENSSL_VERSION
+	if [ "$(uname -m)" = "aarch64" ]; then
+		./Configure no-afalgeng
+	else
+		./config
+	fi
+	make -j$MAKE_CONCURRENCY
+	# make test
+	make install_sw
+	cd /
+	rm -rf /tmp/openssl
+	ln -s /usr/local/lib64/libssl.so.3 /usr/lib64/libssl.so.3
+	ln -s /usr/local/lib64/libcrypto.so.3 /usr/lib64/libcrypto.so.3
+	popd
+fi
 
 ## CMake
 
@@ -448,7 +461,7 @@ function install_curl()
 			--disable-pop3 --without-librtmp --disable-smtp --disable-smtps \
 			--disable-telnet --disable-tftp --disable-smb --disable-versioned-symbols \
 			--without-libidn2 --without-libssh2 --without-nghttp2 \
-			--with-ssl
+			--with-ssl --without-libpsl
 		run make -j$MAKE_CONCURRENCY
 		run make install
 		if [[ "$VARIANT" = exe_gc_hardened ]]; then
@@ -493,7 +506,7 @@ function install_sqlite()
 		export CFLAGS
 		export CXXFLAGS
 		run ./configure --prefix="$PREFIX" --enable-static \
-			--disable-shared --disable-dynamic-extensions
+			--disable-shared --disable-load-extension
 		run make -j$MAKE_CONCURRENCY
 		run make install
 		if [[ "$VARIANT" = exe_gc_hardened ]]; then

@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-CCACHE_VERSION=4.9
+CCACHE_VERSION=4.12.1
 
 # shellcheck source=image/functions.sh
 source /hbb_build/functions.sh

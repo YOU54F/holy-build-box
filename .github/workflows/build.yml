@@ -3,7 +3,7 @@ name: Docker Image CI
 on:
   push:
     branches:
-      - alpine
+      - multilib
 
 jobs:
   build-and-publish:
@@ -11,22 +11,31 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        arch: [arm, arm64, amd64, i386]
+        variant: [alpine, centos7]
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v5
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        if: matrix.arch != 'amd64'
+      - name: Build centos7 image
+        if: matrix.variant == 'centos7'
+        run: |
+          docker buildx build --progress=plain \
+            --platform linux/amd64 --load --rm \
+            -t you54f/holy-build-box:4.0.0-amd64-${{ matrix.variant }} \
+            -f Dockerfile-amd64-centos7 --pull \
+            --build-arg OPENSSL_1_1_LEGACY=false \
+            --build-arg DISABLE_OPTIMIZATIONS=0 .
+      - name: Build alpine image
+        if: matrix.variant == 'alpine'
+        run: |
+          docker buildx build --progress=plain \
+            --platform linux/amd64 --load --rm \
+            -t you54f/holy-build-box:4.0.0-amd64-${{ matrix.variant }} \
+            -f Dockerfile-alpine --pull \
+            --build-arg OPENSSL_1_1_LEGACY=false \
+            --build-arg DISABLE_OPTIMIZATIONS=0 .
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        if: matrix.arch != 'amd64'
-
-      - name: Build Docker image
-        run: make build_${{ matrix.arch }}
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -35,5 +44,49 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Push Docker image
-        run: make push_${{ matrix.arch }}
+        if: matrix.variant == 'centos7' || matrix.variant == 'alpine'
+        run: |
+          docker push you54f/holy-build-box:4.0.0-amd64-${{ matrix.variant }}
+  
+  build-and-publish-arm:
+    runs-on: ubuntu-22.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [alpine, centos7]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Build centos7 image
+        if: matrix.variant == 'centos7'
+        run: |
+          docker buildx build --progress=plain \
+            --platform linux/arm64 --load --rm \
+            -t you54f/holy-build-box:4.0.0-arm64-${{ matrix.variant }} \
+            -f Dockerfile-arm64-centos7 --pull \
+            --build-arg OPENSSL_1_1_LEGACY=false \
+            --build-arg DISABLE_OPTIMIZATIONS=0 .
+      - name: Build alpine image
+        if: matrix.variant == 'alpine'
+        run: |
+          docker buildx build --progress=plain \
+            --platform linux/arm64 --load --rm \
+            -t you54f/holy-build-box:4.0.0-arm64-${{ matrix.variant }} \
+            -f Dockerfile-alpine --pull \
+            --build-arg OPENSSL_1_1_LEGACY=false \
+            --build-arg DISABLE_OPTIMIZATIONS=0 .
+
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Push Docker image
+        if: matrix.variant == 'centos7' || matrix.variant == 'alpine'
+        run: |
+          docker push you54f/holy-build-box:4.0.0-arm64-${{ matrix.variant }}
 

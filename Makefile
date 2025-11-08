@@ -7,7 +7,8 @@ DISABLE_OPTIMIZATIONS = 0
 OPENSSL_1_1_LEGACY ?= false
 IMAGE = $(OWNER)/holy-build-box
 
-ARCHS:=amd64 arm/v6 arm/v7 arm64 i386 ppc64le s390x
+ARCHS:=arm64
+# ARCHS:=amd64 arm/v6 arm/v7 arm64 i386 ppc64le s390x
 
 .PHONY: build test tags push release
 
@@ -56,7 +57,8 @@ manifest_create_truby:
 	docker buildx imagetools create --tag you54f/traveling-ruby-builder:alpine --append you54f/traveling-ruby-builder:next-amd64-alpine
 
 build_image:
-	docker buildx build --progress=plain --platform linux/$(ARCH) --rm -t $(IMAGE):$(VERSION)-$(subst /,-,$(ARCH))-$(VARIANT) -f Dockerfile-$(VARIANT) --pull --build-arg OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) . --load
+	@echo "Building image for $(ARCH) $(VARIANT)"
+	docker buildx build --progress=plain --platform linux/$(ARCH) --load --rm -t $(IMAGE):$(VERSION)-$(subst /,-,$(ARCH))-$(VARIANT) -f Dockerfile-$(VARIANT) --pull --build-arg OPENSSL_1_1_LEGACY=$(OPENSSL_1_1_LEGACY) --build-arg DISABLE_OPTIMIZATIONS=$(DISABLE_OPTIMIZATIONS) .
 
 build_image_risc_alpine:
 	ARCH=riscv64 VARIANT=alpine make build_image_riscv64

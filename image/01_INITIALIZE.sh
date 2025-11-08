@@ -87,17 +87,41 @@ if ! eval_bool "$SKIP_INITIALIZE"; then
 			fi
 			header "Updating system, installing compiler toolchain"
 			run touch /var/lib/rpm/*
+			# Update CentOS 7 repos to use vault.centos.org
+			# as mirror.centos.org no longer hosts CentOS 7 packages
+			sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo
+			sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo
+			sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
+
+			if [[ $ARCHITECTURE == "arm64" ]]; then
+				sed -i 's|baseurl=http://vault.centos.org/centos/7/os/$basearch/|baseurl=https://vault.centos.org/altarch/7/sclo/aarch64/|g' /etc/yum.repos.d/*.repo
+				find /etc/yum.repos.d/ -type f -exec sed -i 's|centos/7|altarch/7|g' {} +
+			fi
+
 			run yum update -y
 			if [[ "$OPENSSL_1_1_LEGACY" = true ]]; then
-				run yum install -y tar curl curl-devel m4 autoconf automake libtool pkgconfig \
-					file patch bzip2 zlib-devel gettext python-setuptools python-devel openssl-devel \
-					epel-release centos-release-scl
+				run yum install -y epel-release centos-release-scl \
+						tar curl curl-devel m4 autoconf automake libtool pkgconfig \
+						file patch bzip2 zlib-devel gettext python-setuptools python-devel \
+						openssl-devel
 			else
-				run yum install -y tar curl curl-devel m4 autoconf automake libtool pkgconfig \
-					file patch bzip2 zlib-devel gettext python-setuptools python-devel \
-					epel-release centos-release-scl perl perl-IPC-Cmd perl-Test-Simple
+				run yum install -y epel-release centos-release-scl \
+						tar curl curl-devel m4 autoconf automake libtool pkgconfig \
+						file patch bzip2 zlib-devel gettext python-setuptools python-devel \
+						perl perl-IPC-Cmd perl-Test-Simple perl-core
 			fi
-			run yum install -y python2-pip "devtoolset-$DEVTOOLSET_VERSION"
+
+			# we need to update mirrors again after installing centos-release-scl
+			# in order to install devtoolset from vault.centos.org
+			sed -i s/mirror.centos.org/vault.centos.org/g /etc/yum.repos.d/*.repo
+			sed -i s/^#.*baseurl=http/baseurl=http/g /etc/yum.repos.d/*.repo
+			sed -i s/^mirrorlist=http/#mirrorlist=http/g /etc/yum.repos.d/*.repo
+
+			if [[ $ARCHITECTURE == "arm64" ]]; then
+				sed -i 's|baseurl=http://vault.centos.org/centos/7/os/$basearch/|baseurl=https://vault.centos.org/altarch/7/sclo/aarch64/|g' /etc/yum.repos.d/*.repo
+				find /etc/yum.repos.d/ -type f -exec sed -i 's|centos/7|altarch/7|g' {} +
+			fi
+			yum install -y python2-pip "devtoolset-$DEVTOOLSET_VERSION"
 
 			echo "*link_gomp: %{static|static-libgcc|static-libstdc++|static-libgfortran: libgomp.a%s; : -lgomp } %{static: -ldl }" > /opt/rh/devtoolset-9/root/usr/lib/gcc/*-redhat-linux/9/libgomp.spec
 			

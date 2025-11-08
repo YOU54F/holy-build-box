@@ -5,7 +5,7 @@ set -e
 if [[ "$OPENSSL_1_1_LEGACY" = true ]]; then
 	OPENSSL_VERSION=1.1.1w
 else
-	OPENSSL_VERSION=3.2.0
+	OPENSSL_VERSION=3.6.0
 fi
 
 
